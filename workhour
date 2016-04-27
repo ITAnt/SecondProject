@@ -1,0 +1,137 @@
+package main
+
+import "flag"
+import "fmt"
+import "bufio"
+import "os"
+import "strconv"
+import "strings"
+
+var infile *string = flag.String("i", "before.txt", "Work hours to convert")
+var outfile *string = flag.String("o", "after.txt", "Work hours converted")
+
+// 声明一个变量，用来临时记录新一行的数据
+var newline string
+
+// 声明一个slice，用他来保存所有新行数据
+var newlines []string
+
+/**
+ * 请手动去掉有请假或迟到、早退的行（这些情况需要特殊处理）
+ * 计算正常上下班，当天没有请假、早退情况的上班时间（单位：小时），保留到小数点后面两位数字。
+ * 计算之前的文件请命名为before.txt，放在该代码同级目录下。
+ */
+func main() {
+	// 初始化保存新行数据的slice，由于每个月最多31天，所以给它分配初始大小为31
+	newlines = make([]string, 31)
+
+	flag.Parse()
+	if infile != nil {
+		fmt.Println("infile=", *infile, "outfile=", *outfile)
+	}
+
+	// 打开未处理的文件
+	file, err := os.Open(*infile)
+	if err != nil {
+		fmt.Println("打开文件失败", infile)
+		return
+	}
+
+	defer file.Close()
+
+	br := bufio.NewReader(file)
+
+	index := 0
+	for {
+		// 每次读取一行，都让新行归位为空
+		newline = ""
+		// 读取一行数据
+		line, isPrefix, readLineErr := br.ReadLine()
+
+		if readLineErr != nil {
+			// 已经读完了
+			break
+		}
+
+		if isPrefix {
+			// 行太长了，无法处理，退出程序
+			fmt.Println("行太长了")
+			return
+		}
+
+		// 字符数组转为字符串
+		str := string(line)
+		// ==============================以后过滤不符合要求的时间（有请假、迟到、早退）
+		// 按制表符分割一行数据，第0个字符串为日期，第1个数据为上班时间，第2个数据为下班
+		strs := strings.Split(str, "\t")
+
+		// 让新行先记录下日期
+		newline = strs[0] + " "
+
+		// 处理上班时间，根据冒号进行分割，前者为小时，后者为分钟
+		start := strings.Split(strs[1], ":")
+		startHour, startHourErr := strconv.Atoi(start[0])
+		if startHourErr != nil {
+			// 转换上班小时的时候出错了
+			fmt.Println("转换上班的小时出现错误")
+			return
+		}
+
+		startMinute, startMinuteErr := strconv.Atoi(start[1])
+		if startMinuteErr != nil {
+			// 转换上班分钟的时候出错了
+			fmt.Println("转换上班的分钟出现错误")
+			return
+		}
+
+		// 处理下班时间，根据冒号进行分割，前者为小时，后者为分钟
+		end := strings.Split(strs[2], ":")
+		endHour, endHourErr := strconv.Atoi(end[0])
+		if endHourErr != nil {
+			// 转换下班小时的时候出错了
+			fmt.Println("转换下班的小时出现错误")
+			return
+		}
+
+		endMinute, endMinuteErr := strconv.Atoi(end[1])
+		if endMinuteErr != nil {
+			// 转换下班分钟的时候出错了
+			fmt.Println("转换下班的分钟出现错误")
+			return
+		}
+
+		// 上班时间转换为小数形式
+		startFloat := float64(float64(startHour) + float64(startMinute)/60)
+		// 小数形式的下班时间
+		endFloat := 0.0
+		// 由于5:30到6:00是吃饭时间，不计入工时，所以要分情况处理
+		if endHour < 18 {
+			// 处于下午5点半到6点之间，相当于17:30下班，也就是下班点为17.5
+			endFloat = 17.5
+		} else {
+			// 6点之后下班，直接减去30/60小时
+			endFloat = float64(float64(endHour) + float64(endMinute)/60 - 0.5)
+		}
+
+		// 减去1.5小时的中午休息时间就是当天上班时间
+		currentDayHour := endFloat - startFloat - 1.5
+
+		// 将slice倒转过来，让时间从小到大=====================待处理
+
+		// 保存新一行数据到slice中currentDayHour
+		newlines[index] = newline + strconv.FormatFloat(currentDayHour, 'f', 2, 64)
+		index++
+	}
+
+	// 保存文件
+	afterFile, afterErr := os.Create(*outfile)
+	if afterErr != nil {
+		fmt.Println("创建输出文件失败")
+		return
+	}
+	defer afterFile.Close()
+
+	for _, line := range newlines {
+		afterFile.WriteString(line + "\r\n")
+	}
+}
