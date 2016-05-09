@@ -1,0 +1,50 @@
+package main
+
+import (
+	"net"
+	"log"
+	"fmt"
+	"bufio"
+)
+
+func main() {
+	/*interfaceByName, err := net.InterfaceByName("enp2s0")
+	if err !=nil{
+		log.Fatal(err)
+	}
+	addrs, err := interfaceByName.Addrs()
+	if err !=nil{
+		log.Fatal(err)
+	}
+
+	tcpAddr := &net.TCPAddr{
+		IP: addrs[0].(*net.IPNet).IP,
+	}
+
+	fmt.Print(tcpAddr.IP)*/
+
+	// 监听8080端口
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		// 监听失败，退出
+		panic(err)
+	}
+
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Fatal("get client connection error: ", err)
+		}
+		go handleConnection(conn)
+	}
+}
+
+func handleConnection(conn net.Conn) {
+	data, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		log.Fatal("get client data error: ", err)
+	}
+	fmt.Printf("%#v\n", data)
+	fmt.Fprintf(conn, "hello client\n")
+	conn.Close()
+}
