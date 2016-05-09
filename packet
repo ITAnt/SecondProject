@@ -22,6 +22,8 @@
 #include <fcntl.h>
 #include <linux/if_ether.h>
 
+
+// 运行程序（./mypacket），再浏览网页。程序会自动监控本机网卡，抓取链路层的数据包，简单分析数据包内容。
 int promisc(const char *nif, int sock)
 {
 	struct ifreq ifr;
