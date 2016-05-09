@@ -1,6 +1,12 @@
 大全：
 http://www.open-open.com/lib/view/open1396063913278.html
 
+gopacket：
+http://stackoverflow.com/questions/21320305/raw-socket-sniffing-in-golang
+https://github.com/google/gopacket
+http://www.tuicool.com/articles/VNR7raZ
+http://www.devdungeon.com/content/packet-capture-injection-and-analysis-gopacket
+
 go socket:
 http://www.tuicool.com/articles/EbAFzei
 
