@@ -1,0 +1,99 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+#include <net/if.h>
+#include <net/ethernet.h>
+
+#include <arpa/inet.h>
+
+#include <netdb.h>
+#include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <linux/if_ether.h>
+
+int promisc(const char *nif, int sock)
+{
+	struct ifreq ifr;
+	strncpy(ifr.ifr_name, nif, strlen(nif)+1);
+	if(ioctl(sock, SIOCGIFFLAGS, &ifr) == -1)
+	{
+		perror("ioctl error!\n");
+		exit(1);
+	}
+	ifr.ifr_flags |= IFF_PROMISC;
+	if(ioctl(sock, SIOCSIFFLAGS, &ifr) == -1)
+	{
+		perror("ioctl error!\n");
+		exit(2);
+	}
+}
+
+void main()
+{
+	struct sockaddr_in addr;
+	struct ether_header *peth;
+	struct iphdr *pip;
+	struct tcphdr *ptcp;
+	struct udphdr *pudp;
+	char *ptemp;
+
+	char buf[40960];
+	int sock, len;
+	int num;
+
+	printf("%ld, %ld, %ld, %ld\n", sizeof(struct ether_header), sizeof(struct iphdr), sizeof(struct tcphdr), sizeof(struct udphdr));
+	sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	if(sock == -1)
+	{
+		perror("socket error!\n");
+		exit(3);
+	}
+	promisc("eth6", sock);
+	len = sizeof(addr);
+	while(1)
+	{
+		num = recvfrom(sock, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&addr, &len);
+		buf[num] = '\0';
+
+		ptemp = buf;
+		printf("\nCatch a packet!\n");
+
+		peth = (struct ether_header*) ptemp;
+		ptemp += sizeof(struct ether_header);
+		pip = (struct iphdr *) ptemp;
+		ptemp += sizeof(struct iphdr);
+
+		switch(pip->protocol)
+		{
+			case IPPROTO_TCP:
+				ptcp = (struct tcphdr*)ptemp;
+				printf("TCP pkt : FROM : [%s]:[%d] ", inet_ntoa(*(struct in_addr *)&(pip->saddr)), ntohs(ptcp->source));
+				printf("TO : [%s]:[%d] \n", inet_ntoa(*(struct in_addr*)&(pip->daddr)), ntohs(ptcp->dest));
+				ptemp += sizeof(struct tcphdr);
+				puts("The datas:\n");
+				puts(ptemp);
+			break;
+			case IPPROTO_UDP:
+				
+			break;
+			case IPPROTO_ICMP:
+			break;
+			case IPPROTO_IGMP:
+			break;
+			default:
+				printf("Unknown pkt, protocl:%d ", pip->protocol);
+			break;
+		}
+	}
+}
