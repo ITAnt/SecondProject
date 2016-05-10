@@ -1,0 +1,109 @@
+package main
+
+import (
+	"fmt"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
+	"log"
+	"time"
+	"github.com/google/gopacket/layers"
+	"strings"
+)
+
+var (
+	device       string = "eth0"
+	snapshot_len int32  = 1024
+	promiscuous  bool   = false
+	err          error
+	timeout      time.Duration = 30 * time.Second
+	handle       *pcap.Handle
+)
+
+func main() {
+
+	// Open device
+	handle, err = pcap.OpenLive(device, snapshot_len, promiscuous, timeout)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer handle.Close()
+
+	// Set filter
+	var filter string = "tcp and port 80"
+	err = handle.SetBPFFilter(filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Only capturing TCP port 80 packets.")
+
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	for packet := range packetSource.Packets() {
+
+		// 时间戳
+		//timestamp := packet.Metadata().Timestamp
+
+		// 报文长度
+		//packetLength := packet.Metadata().CaptureLength
+
+		// 报文内容
+		//packetContent := packet.Metadata().CaptureInfo
+		fmt.Println(packet)
+		printPacketInfo(packet)
+	}
+
+}
+
+func printPacketInfo(packet gopacket.Packet) {
+
+	// 判断这个数据包是不是 IP
+	ipLayer := packet.Layer(layers.LayerTypeIPv4)
+	if ipLayer != nil {
+		ip, _ := ipLayer.(*layers.IPv4)
+
+		// IP layer variables:
+		// Version (Either 4 or 6)
+		// IHL (IP Header Length in 32-bit words)
+		// TOS, Length, Id, Flags, FragOffset, TTL, Protocol (TCP?),
+		// Checksum, SrcIP, DstIP
+		fmt.Printf("源IP地址：%s -----目的IP地址：%s\n", ip.SrcIP, ip.DstIP)
+		fmt.Println("协议类型： ", ip.Protocol)
+		fmt.Println()
+	}
+
+	// 判断这个数据包是不是 TCP
+	tcpLayer := packet.Layer(layers.LayerTypeTCP)
+	if tcpLayer != nil {
+		tcp, _ := tcpLayer.(*layers.TCP)
+
+		// TCP layer variables:
+		// SrcPort, DstPort, Seq, Ack, DataOffset, Window, Checksum, Urgent
+		// Bool flags: FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS
+		fmt.Printf("源端口：%d --------目的端口：%d\n", tcp.SrcPort, tcp.DstPort)
+		//fmt.Println("Sequence number: ", tcp.Seq)
+		fmt.Println()
+	}
+
+	// 遍历所有层，打印出每一层的类型
+	fmt.Println("All packet layers:")
+	for _, layer := range packet.Layers() {
+		fmt.Println("- ", layer.LayerType())
+	}
+
+	// When iterating through packet.Layers() above,
+	// if it lists Payload layer then that is the same as
+	// this applicationLayer. applicationLayer contains the payload
+	applicationLayer := packet.ApplicationLayer()
+	if applicationLayer != nil {
+		fmt.Printf("%s\n", applicationLayer.Payload())
+
+		// Search for a string inside the payload
+		if strings.Contains(string(applicationLayer.Payload()), "HTTP") {
+			fmt.Println("HTTP found!")
+		}
+	}
+
+	// Check for errors
+	/*if err := packet.ErrorLayer(); err != nil {
+		fmt.Println("解码出错:", err)
+	}*/
+}
