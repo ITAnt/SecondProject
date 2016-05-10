@@ -2,17 +2,17 @@ package main
 import (
 	"fmt"
 	"net"
-	"bufio"
 )
 func main() {
-	conn, err := net.Dial("tcp", ":8080")
+	conn, err := net.Dial("tcp", "10.57.49.44:8080")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(conn, "hello serverssss\n")
-	data, err := bufio.NewReader(conn).ReadString('\n')
+	fmt.Fprintf(conn, "hello server\n")
+	conn.Close()
+	/*data, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%#v\n", data)
+	fmt.Printf("%#v\n", data)*/
 }
