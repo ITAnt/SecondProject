@@ -1,0 +1,69 @@
+package main
+import (
+	"fmt"
+	"log"
+	"net"
+	"bufio"
+	"bytes"
+	"io"
+)
+
+func main() {
+	// 监听8080端口
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		panic(err)
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Fatal("客户端连接出错: ", err)
+		}
+		go handleConnection(conn)
+	}
+}
+
+func handleConnection(conn net.Conn) {
+	data, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		log.Fatal("获取客户端信息出错: ", err)
+	}
+	fmt.Printf("%#v\n", data)
+
+	// 五元组
+	clientIP, clientPort, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	// 1.源IP地址
+	fmt.Println(clientIP)
+	// 2.源端口
+	fmt.Println(clientPort)
+
+	destIP, destPort, _ := net.SplitHostPort(conn.LocalAddr().String())
+	// 3.目的地址(本地虚拟网卡接口)
+	fmt.Println(destIP)
+	// 4.目的端口
+	fmt.Println(destPort)
+
+	requestInfo, err := readRequest(conn)
+	if (err != nil) {
+		log.Fatal("解析客户端请求出错: ", err)
+	}
+	fmt.Println(requestInfo)
+	//fmt.Fprintf(conn, "hello client\n")
+	conn.Close()
+}
+
+func readRequest(conn net.Conn) ([]byte, error) {
+	requestDetails := bytes.NewBuffer(nil)
+	var buf [512]byte
+	for {
+		n, err := conn.Read(buf[0:])
+		requestDetails.Write(buf[0:n])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+	}
+	return requestDetails.Bytes(), nil
+}
