@@ -17,6 +17,16 @@ var (
 	handle *pcap.Handle
 )
 func main() {
+	// Open output pcap file and write header
+	/*packetCount := 0
+	f, _ := os.Create("test.pcap")
+	w := pcapgo.NewWriter(f)
+	w.WriteFileHeader(snapshotLen, layers.LinkTypeEthernet)
+	defer f.Close()*/
+
+
+
+
 	// Open device
 	handle, err = pcap.OpenLive(device, snapshot_len, promiscuous, timeout)
 	if err != nil {
@@ -40,8 +50,34 @@ func main() {
 		// 打印解析之后的数据包信息
 		printPacketInfo(packet)
 		fmt.Println("============end=========")
+
+
+
+
+		/*w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+		packetCount++
+		// Only capture 100 and then stop
+		if packetCount > 100 {
+			break
+		}*/
 	}
+
+
+
+	// 复制文件
+	/*destFile, err := os.Create("/media/itant/000F8681000F1434/test.pcap")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer destFile.Close()
+
+	srcFile, err := os.Open("test.pcap")
+	_, cperr := io.Copy(destFile, srcFile)
+	if cperr != nil {
+		fmt.Println(cperr)
+	}*/
 }
+
 func printPacketInfo(packet gopacket.Packet) {
 	// 判断这个数据包是不是 IP
 	ipLayer := packet.Layer(layers.LayerTypeIPv4)
@@ -63,11 +99,11 @@ func printPacketInfo(packet gopacket.Packet) {
 			fmt.Println("时间戳：" + timestamp)
 
 			// 报文内容
-			//packetContent := packet.Data()
-			packetContent := tcpLayer.LayerContents()
+			packetContent := packet.Data()
+			//packetContent := tcpLayer.LayerContents()
 			fmt.Println("报文内容：" + string(packetContent))
 
-			// 报文总长度
+			// 报文总长度(bytes)
 			//packetLength := packet.Metadata().CaptureLength
 			fmt.Println("报文长度：" + strconv.Itoa(len(packetContent)))
 		}
