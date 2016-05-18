@@ -11,6 +11,7 @@ import (
   "vprobe/rawtransaction"
   "sync"
   "encoding/json"
+  "vprobe/metric"
 )
 
 var (
@@ -24,13 +25,15 @@ var (
 
   channel chan bool = make(chan bool)
 
-  lock = &sync.Mutex{}
+  lock = &sync.RWMutex{}
   // Metrics到ops-agent的上报周期(30s)或其他值，可配置，范围为1-60s
   // ops-agent到kafka的上报周期以分钟为粒度，可配置，范围为1-5分钟
   noresp int = 30000 // 指标上报周期为30秒，即30000毫秒
   requestList []rawtransaction.RequestIdentification = make([]rawtransaction.RequestIdentification, 0, 50) // 30个元素，预留20个元素
 
-  rawTransactions []rawtransaction.Transaction = make([]rawtransaction.Transaction, 0, 50) // 未处理的事务集合
+  rawTransactions []rawtransaction.Transaction = make([]rawtransaction.Transaction, 0, 50) // 未处理的事务
+
+  transactionList []metric.Transaction = make([]metric.Transaction, 0, 50) // 经过处理的事务
 )
 
 func main() {
@@ -52,8 +55,9 @@ func main() {
   }
 
   // 每隔30秒统计一次
-  go submitTrans()
   go capturePacket(err)
+  go submitTrans()
+  go formMetrics()
 
   <-channel
 }
@@ -169,7 +173,6 @@ func printPacketInfo(packet gopacket.Packet) {
 }
 
 func submitTrans() {
-  time.Sleep(30*time.Second)
   c := time.Tick(30 * time.Second)
   for _ = range c {
     // 每隔30秒统计一次
@@ -188,10 +191,40 @@ func submitTrans() {
     }
 
     // 打印原始事务
-    rawTransactionJson, _ := json.Marshal(rawTransactions)
-    fmt.Println(string(rawTransactionJson))
+    //rawTransactionJson, _ := json.Marshal(rawTransactions)
+    //fmt.Println(string(rawTransactionJson))
+    lock.Unlock()
+  }
+}
 
+func formMetrics() {
+  // 每隔5分钟搞一次
+  c := time.Tick(300 * time.Second)
+  for _ = range c {
+    // 每隔30秒统计一次
+
+    for _, rawTransaction := range rawTransactions {
+      transaction := metric.Transaction{
+        rawTransaction.Request.Timestamp,
+        rawTransaction.Response.Timestamp - rawTransaction.Request.Timestamp,
+        rawTransaction.Response.Code,
+      }
+      transactionList = append(transactionList, transaction)
+    }
+
+    metric := metric.Metric{
+      len(transactionList),
+      transactionList,
+      errorNumber,
+    }
+
+    // 打印原始事务
+    metricJson, _ := json.Marshal(metric)
+    fmt.Println(string(metricJson))
+
+    lock.Lock()
     //操作之后，清空requestList和rawTransactions
+    transactionList = transactionList[:0]
     rawTransactions = rawTransactions[:0]
     requestList = requestList[:0]
     errorNumber = 0
