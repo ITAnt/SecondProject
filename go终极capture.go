@@ -20,6 +20,7 @@ var (
   timeout time.Duration = 30 * time.Second
   handle *pcap.Handle
   localAddress string
+  errorNumber int = 0
 
   channel chan bool = make(chan bool)
 
@@ -182,15 +183,18 @@ func submitTrans() {
         rawTransactions = append(rawTransactions, rawtra)
       } else {
         // 异常事务+1
+        errorNumber++
       }
     }
 
     // 打印原始事务
     rawTransactionJson, _ := json.Marshal(rawTransactions)
     fmt.Println(string(rawTransactionJson))
+
     //操作之后，清空requestList和rawTransactions
     rawTransactions = rawTransactions[:0]
     requestList = requestList[:0]
+    errorNumber = 0
     lock.Unlock()
   }
 }
