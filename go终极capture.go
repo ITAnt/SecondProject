@@ -166,8 +166,6 @@ func printPacketInfo(packet gopacket.Packet) {
           fmt.Println("有HTTP")
         }
       }
-
-
     }
   }
 }
@@ -177,7 +175,12 @@ func submitTrans() {
   for _ = range c {
     // 每隔30秒统计一次
     lock.Lock()
-    for _, reqiden := range requestList {
+    // 用一个临时变量来记住请求，减少锁的持有时间
+    tempRequestList := requestList
+    requestList = requestList[:0]
+    lock.Unlock()
+
+    for _, reqiden := range  tempRequestList{
       if reqiden.Modify {
         rawtra := rawtransaction.Transaction {
           rawtransaction.Request{reqiden.Timestamp},
@@ -193,7 +196,7 @@ func submitTrans() {
     // 打印原始事务
     //rawTransactionJson, _ := json.Marshal(rawTransactions)
     //fmt.Println(string(rawTransactionJson))
-    lock.Unlock()
+
   }
 }
 
@@ -226,7 +229,6 @@ func formMetrics() {
     //操作之后，清空requestList和rawTransactions
     transactionList = transactionList[:0]
     rawTransactions = rawTransactions[:0]
-    requestList = requestList[:0]
     errorNumber = 0
     lock.Unlock()
   }
