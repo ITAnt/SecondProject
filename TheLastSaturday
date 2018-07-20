@@ -9,7 +9,7 @@ import javax.swing.JOptionPane;
 public class WorkTest {
 
 	public static void main(String[] args) {
-		boolean shouldAlert = isTodayTheLastSaturdayOfCurrentMonth();
+		boolean shouldAlert = isTomorrowTheLastSaturdayOfCurrentMonth();
 		if (shouldAlert) {
 			JFrame jf=new JFrame();
 	        jf.setAlwaysOnTop(true);
@@ -31,6 +31,20 @@ public class WorkTest {
 		int lastSaturday = getTheLastSaturday(calendar);
 		System.out.println(lastSaturday);
 		return today == lastSaturday;
+	}
+	
+	/**
+	 * 判断明天是不是本月最后一个星期六
+	 * @return
+	 */
+	public static boolean isTomorrowTheLastSaturdayOfCurrentMonth() {
+		Calendar calendar = Calendar.getInstance(Locale.getDefault());
+		calendar.add(Calendar.DATE, 1);
+		int tomorrow = calendar.get(Calendar.DATE);
+		System.out.println(tomorrow);
+		int lastSaturday = getTheLastSaturday(calendar);
+		System.out.println(lastSaturday);
+		return tomorrow == lastSaturday;
 	}
 	
 	/**
