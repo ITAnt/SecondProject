@@ -1,0 +1,67 @@
+package com.itant.saturday;
+
+import java.util.Calendar;
+import java.util.Locale;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
+public class WorkTest {
+
+	public static void main(String[] args) {
+		boolean shouldAlert = isTodayTheLastSaturdayOfCurrentMonth();
+		if (shouldAlert) {
+			JFrame jf=new JFrame();
+	        jf.setAlwaysOnTop(true);
+	        int input = JOptionPane.showConfirmDialog(jf, "明天是本月最后一个星期六，记得定好闹钟来上班！", "加班提醒", JOptionPane.CLOSED_OPTION, JOptionPane.ERROR_MESSAGE);
+	        if (input == JOptionPane.OK_OPTION || input == JOptionPane.CLOSED_OPTION) {
+	        	System.exit(0);
+	        }
+		}
+	}
+	
+	/**
+	 * 判断今天是不是本月最后一个星期六
+	 * @return
+	 */
+	public static boolean isTodayTheLastSaturdayOfCurrentMonth() {
+		Calendar calendar = Calendar.getInstance(Locale.getDefault());
+		int today = calendar.get(Calendar.DATE);
+		System.out.println(today);
+		int lastSaturday = getTheLastSaturday(calendar);
+		System.out.println(lastSaturday);
+		return today == lastSaturday;
+	}
+	
+	/**
+	 * 获取某个月的最后一个星期六
+	 * @param targetCalendar
+	 * @return
+	 */
+	public static int getTheLastSaturday(Calendar targetCalendar) {
+        // 目标月份的1号(第一天)
+		Calendar calendar = targetCalendar;
+        calendar.set(Calendar.DATE, 1);
+        int targetMonth = calendar.get(Calendar.MONTH);
+
+        // 看看1号是星期几，1:星期日 	2:星期一 	3:星期二	4:星期三 	5:星期四 	6:星期五	7:星期六
+        int day = calendar.get(Calendar.DAY_OF_WEEK);
+        
+        int jumpDays = 7 - day;
+        
+        // 第一个星期六
+        calendar.add(Calendar.DATE, jumpDays);
+
+        while (true) {
+        	calendar.add(Calendar.DATE, 7);
+        	if (calendar.get(Calendar.MONTH) != targetMonth) {
+        		break;
+        	}
+		}
+
+        // 本月最后一个星期六
+        calendar.add(Calendar.DATE, -7);
+        
+        return calendar.get(Calendar.DATE);
+    }
+}
